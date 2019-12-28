@@ -1,151 +1,224 @@
 #include<iostream>
+#include<queue>
 #include <ctime>
 #include <algorithm>
 #include <fstream>
 using namespace std;
 
-class bst_node
+int max(int a, int b)
 {
-public:
-	int value;
-	bst_node* lchild;
-	bst_node* rchild;
-	bst_node* parent;
-	bst_node():value(0),lchild(NULL),rchild(NULL),parent(NULL){}
-	bst_node(int key):value(key),lchild(NULL),rchild(NULL),parent(NULL){}
-};
+	return a > b ? a : b;
+}
 
-class bs_tree
+class avl_node
 {
 private:
-	bst_node* root;
-	void insert(bst_node* &root, bst_node* node);
-	bst_node* search(bst_node*root,int key);
-	void remove(bst_node*& root, bst_node* node);
+	int value;
+	int height;
+	avl_node* lchild;
+	avl_node* rchild;
 public:
-	bs_tree():root(NULL){}
-	void insert(int key);
-	void remove(int key);
+	friend class avl_tree;
+	avl_node(int v, avl_node* l, avl_node* r):value(v),height(0),lchild(l),rchild(r){}
 };
 
-void swap(bst_node* a, bst_node* b)
+class avl_tree
 {
-	int tmp = a->value;
-	a->value = b->value;
-	b->value = tmp;
+private:
+	avl_node* root;//¸ù½Úµã
+	avl_node* llrotation(avl_node* k2);//×óµ¥Ğı×ª£¬·µ»ØĞı×ªºóµÄ¸ù½Úµã
+	avl_node* rrrotation(avl_node* k1);//ÓÒµ¥Ğı×ª
+	avl_node* lrrotation(avl_node* k3);//×óÓÒË«Ğı
+	avl_node* rlrotation(avl_node* k1);//ÓÒ×óË«Ğı
+	avl_node* search(avl_node*x, int v);
+	avl_node* insert(avl_node* &r, int v);//²åÈë²¢·µ»Ø¸ù½Úµã
+	avl_node* remove(avl_node*& r, avl_node* z);//É¾³ı²¢·µ»Ø¸ù½Úµã
+public:
+	avl_tree() { root = NULL; }
+	~avl_tree() { root = NULL; }
+	int height(avl_node* node);//»ñÈ¡½áµãµÄ¸ß¶È
+	void insert(int v);
+	void remove(int v);
+	bool output();//Ë³ĞòÊä³ö²¢ÅĞ¶ÏÊÇ·ñÎªÍêÈ«¶ş²æÊ÷
+};
+
+int avl_tree::height(avl_node* node)
+{
+	if (node==NULL)return 0;
+	else return (*node).height;
 }
 
-void bs_tree::insert(bst_node* &root, bst_node* node)
+avl_node* avl_tree::llrotation(avl_node* k2)
 {
-	bst_node* x = root;
-	bst_node* parent = NULL;
-	while (x)
+	avl_node* k1;
+	k1 = k2->lchild;
+	k2->lchild = k1->rchild;
+	k1->rchild = k2;
+	k2->height = max(height(k2->lchild), height(k2->rchild)) + 1;
+	k1->height = max(height(k1->lchild), height(k2)) + 1;
+	return k1;
+}
+
+avl_node* avl_tree::rrrotation(avl_node* k1)
+{
+	avl_node* k2;
+	k2 = k1->rchild;
+	k1->rchild = k2->lchild;
+	k2->lchild = k1;
+	k1->height = max(height(k1->lchild), height(k1->rchild)) + 1;
+	k2->height = max(height(k2->rchild), height(k1)) + 1;
+	return k2;
+}
+
+avl_node* avl_tree::lrrotation(avl_node* k3)
+{
+	k3->lchild = rrrotation(k3->lchild);
+	return llrotation(k3);
+}
+
+avl_node* avl_tree::rlrotation(avl_node* k1)
+{
+	k1->rchild = llrotation(k1->rchild);
+	return rrrotation(k1);
+}
+
+avl_node* avl_tree::insert(avl_node* &r, int v)
+{
+	if (r == NULL)//¿ÕÊ÷
 	{
-		parent = x;
-		if (node->value < x->value) x = x->lchild; 
-		else if (node->value > x->value)x = x->rchild;
-		else return;
+		r = new avl_node(v, NULL, NULL);
 	}
-	if (parent)
+	else if (v < r->value)//²åÈë×ó×ÓÊ÷
 	{
-		if (node->value < parent->value) {
-			parent->lchild = node; node->parent = parent;
-		}
-		else {
-			parent->rchild = node; node->parent = parent;
-		}
-		return;
-	}
-	root = node;
-}
-
-void bs_tree::insert(int key)
-{
-	bst_node* node = new bst_node(key);
-	insert(root, node);
-}
-
-bst_node* bs_tree::search(bst_node*root,int key)
-{
-	bst_node* node = root;
-	while (node)
-	{
-		if (key < node->value)node = node->lchild;
-		else if (key > node->value)node = node->rchild;
-		else return node;
-	}
-	return NULL;
-}
-
-void bs_tree::remove(bst_node*& root, bst_node* node)
-{
-	//nodeÎŞº¢×Ó£¬Ö±½ÓÉ¾³ı
-	if (node->lchild == NULL && node->rchild == NULL)
-	{
-		//nodeÊÇ¸ù½Úµã
-		if (node == root)
+		r->lchild = insert(r->lchild, v);
+		if (height(r->lchild) - height(r->rchild) == 2)//avlÊ§È¥Æ½ºâ
 		{
-			root = NULL;
-			delete node;
+			if (v < r->lchild->value)r = llrotation(r);
+			else r = lrrotation(r);
 		}
-		else
+	}
+	else if (v > r->value)//²åÈëÓÒ×ÓÊ÷
+	{
+		r->rchild = insert(r->rchild, v);
+		if (height(r->rchild) - height(r->lchild) == 2)//avlÊ§È¥Æ½ºâ
 		{
-			if (node->parent->lchild == node)
+			if (v > r->rchild->value)r = rrrotation(r);
+			else r = rlrotation(r);
+		}
+	}
+	else cout << "²åÈëÊ§°Ü£¬²»ÔÊĞí²åÈëÏàÍ¬½áµã" << endl;
+	r->height = max(height(r->lchild), height(r->rchild)) + 1;
+	return r;
+}
+
+void avl_tree::insert(int v)
+{
+	insert(root, v);
+}
+
+bool avl_tree::output()
+{
+	bool mark = 1;
+	bool judge = 1;
+	queue<avl_node>q;//´´½¨Ò»¸ö¶ÓÁĞ
+	q.push(*root);
+	bool blank = 0;//±ê¼ÇÊÇ·ñÒªÔÚÊä³öÇ°Êä³ö¿Õ¸ñ
+	while (!q.empty())
+	{
+		if (blank)cout << ' ';
+		else blank = 1;
+		cout << q.front().value;
+		//ÅĞ¶Ï¶ÓÊ×ÔªËØÊÇ·ñÓĞ×ÓÅ®
+		if (q.front().lchild)
+		{
+			q.push(*(q.front().lchild));
+			if (!mark)judge = 0;
+		}
+		else mark = 0;
+		if (q.front().rchild)
+		{
+			q.push(*(q.front().rchild));
+			if (!mark)judge = 0;
+		}
+		else mark = 0;
+		q.pop();
+	}
+	cout << endl;
+	return judge;
+}
+
+avl_node* avl_tree::search(avl_node*x, int v)
+{
+	while (x != NULL && x->value != v)
+	{
+		if (v > x->value)x = x->rchild;
+		else x = x->lchild;
+	}
+	return x;
+}
+
+avl_node* avl_tree::remove(avl_node*& r, avl_node* z)
+{
+	if (r == NULL || z == NULL)return NULL;
+	if (z->value < r->value)
+	{
+		r->lchild = remove(r->lchild, z);
+		if (height(r->rchild) - height(r->lchild) == 2)
+		{
+			if (height(r->rchild->lchild) > height(r->rchild->rchild))
+				r = rlrotation(r);
+			else
+				r = rrrotation(r);
+		}
+	}
+	else if (z->value > r->value)
+	{
+		r->rchild = remove(r->rchild, z);
+		if (height(r->lchild) - height(r->rchild) == 2)
+		{
+			if (height(r->lchild->rchild) > height(r->lchild->lchild))
+				r = lrrotation(r);
+			else
+				r = llrotation(r);
+		}
+	}
+	else
+	{
+		if (r->lchild != NULL && r->rchild != NULL)
+		{
+			if (height(r->lchild) > height(r->rchild))
 			{
-				node->parent->lchild = NULL; 
-				delete node;
+				avl_node* max = r->lchild;
+				while (max->rchild)max = max->rchild;
+				r->value = max->value;
+				r->lchild = remove(r->lchild, max);
 			}
 			else
 			{
-				node->parent->rchild = NULL; 
-				delete node;
+				avl_node* min = r->rchild;
+				while (min->lchild)min = min->lchild;
+				r->value = min->value;
+				r->rchild = remove(r->rchild, min);
 			}
-		}
-	}
-
-	//nodeÖ»ÓĞÒ»¸öº¢×Ó
-	else if (node->lchild == NULL)
-	{
-		swap(node, node->rchild);
-		delete node->rchild;
-		node->rchild = NULL;
-	}
-	else if (node->rchild == NULL)
-	{
-		swap(node, node->lchild);
-		delete node->lchild;
-		node->lchild = NULL;
-	}
-
-	//nodeÓĞÁ½¸öº¢×Ó
-	else
-	{
-		bst_node* replace = node->rchild;
-		while (replace->lchild)replace = replace->lchild;
-
-		swap(node, replace);
-
-		if (node->rchild == replace)
-		{
-			node->rchild = replace->rchild;
-			if(replace->rchild)replace->rchild->parent = node;
 		}
 		else
 		{
-			replace->parent->lchild = replace->rchild;
-			if(replace->rchild)replace->rchild->parent = replace->parent;
+			avl_node* tmp = r;
+			r = (r->lchild != NULL) ? r->lchild : r->rchild;
+			delete tmp;
 		}
-		delete replace;
 	}
+	return r;
 }
 
-void bs_tree::remove(int key)
+void avl_tree::remove(int key)
 {
-	bst_node* node = search(root, key);
-	if (node)remove(root, node);
+	avl_node* z;
+	if ((z = search(root, key)) != NULL)
+		root = remove(root, z);
 }
 
-void way1(bs_tree& tree, int n, ofstream& time_file)//°´µİÔöË³Ğò²åÈëN¸öÕûÊı£¬°´ÏàÍ¬Ë³ĞòÉ¾³ı
+void way1(avl_tree& tree, int n, ofstream& time_file)//°´µİÔöË³Ğò²åÈëN¸öÕûÊı£¬°´ÏàÍ¬Ë³ĞòÉ¾³ı
 {
 	clock_t startTime, endTime;
 	startTime = clock();//¼ÆÊ±¿ªÊ¼
@@ -167,7 +240,7 @@ void way1(bs_tree& tree, int n, ofstream& time_file)//°´µİÔöË³Ğò²åÈëN¸öÕûÊı£¬°´Ï
 	}
 }
 
-void way2(bs_tree& tree, int n, ofstream& time_file)//°´µİÔöË³Ğò²åÈëN¸öÕûÊı£¬°´Ïà·´Ë³ĞòÉ¾³ı
+void way2(avl_tree& tree, int n, ofstream& time_file)//°´µİÔöË³Ğò²åÈëN¸öÕûÊı£¬°´Ïà·´Ë³ĞòÉ¾³ı
 {
 	for (int i = 1; i <= n; i++)tree.insert(i);
 
@@ -182,7 +255,7 @@ void way2(bs_tree& tree, int n, ofstream& time_file)//°´µİÔöË³Ğò²åÈëN¸öÕûÊı£¬°´Ï
 	}
 }
 
-void way3(bs_tree& tree, int n, ofstream& time_file)//°´Ëæ»úË³Ğò²åÈëN¸öÕûÊı£¬°´Ëæ»úË³ĞòÉ¾³ı
+void way3(avl_tree& tree, int n, ofstream& time_file)//°´Ëæ»úË³Ğò²åÈëN¸öÕûÊı£¬°´Ëæ»úË³ĞòÉ¾³ı
 {
 	//µÃµ½Ëæ»ú²åÈëË³ĞòÊı×é
 	int* a = new int[n];
@@ -215,8 +288,8 @@ void way3(bs_tree& tree, int n, ofstream& time_file)//°´Ëæ»úË³Ğò²åÈëN¸öÕûÊı£¬°´Ë
 
 int main()
 {
-	bs_tree tree;
-	ofstream time_file("C:\\Users\\zxy\\Desktop\\bs_tree.txt", ios::app);
+	avl_tree tree;
+	ofstream time_file("C:\\Users\\zxy\\Desktop\\avl_tree.txt", ios::app);
 	for (int n = 100; n <= 1000000; n *= 10)
 	{
 		way1(tree, n, time_file);
